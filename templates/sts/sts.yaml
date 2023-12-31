@@ -1,0 +1,201 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: postgres-{{- .Values.name }}
+  namespace: {{ .Values.namespace }}
+  labels:
+{{- include "postgres-labels" . | indent 4 }}
+spec:
+  podManagementPolicy: "Parallel"
+  replicas: {{ .Values.replicas | default "1"}}
+  serviceName: postgres-{{- .Values.name }}
+  selector:
+    matchLabels:
+{{- include "postgres-labels" . | indent 6 }}
+  template:
+    metadata:
+      namespace: {{ .Values.namespace }}
+      labels:
+{{- include "postgres-labels" . | indent 8 }}
+        database-metrics-enabled: "true"
+    spec:
+      containers:
+        - name: postgres
+          image: {{ .Files.Get "images/image" | default "exdubx/postgres:1.0.2" }}  
+          imagePullPolicy: IfNotPresent
+          {{- if .Values.resources }}
+          resources:
+          {{- with .Values.resources }}
+            limits:
+              cpu: {{ .limit.cpu  | default "100m" }}
+              memory: {{ .limit.memory | default "200Mi" }}
+            requests:
+              cpu: {{ .request.cpu | default "50m" }}
+              memory: {{ .request.memory | default "100Mi" }}
+          {{- end }}
+          {{- end }}
+          ports:
+            - containerPort: 5432
+              name: sql
+            - containerPort: 8008
+              name: patroni
+          readinessProbe:
+            exec:
+              command:
+                - /home/postgres/health-check.sh
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 10
+            successThreshold: 1
+            failureThreshold: 3
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: PATRONI_REPLICATION_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-{{- .Values.name -}}-admin
+                  key: replicator
+            - name: PATRONI_REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-{{- .Values.name -}}-admin
+                  key: replicator-password
+            - name: PATRONI_SUPERUSER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-{{- .Values.name -}}-admin
+                  key: superuser
+            - name: PATRONI_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-{{- .Values.name -}}-admin
+                  key: superuser-password
+            - name: CLIENT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-{{- .Values.name -}}-write
+                  key: user
+            - name: CLIENT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-{{- .Values.name -}}-write
+                  key: password
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-{{- .Values.name -}}-admin
+                  key: superuser-password
+          volumeMounts:
+            - name: postgres-{{- .Values.name -}}-data
+              mountPath: /var/lib/postgresql/volume
+            - name: patroni-config
+              mountPath: /home/postgres/patroni
+            {{- if .Values.backup.enable }}
+            - name: walg-config
+              mountPath: /home/postgres/walg
+            - name: s3key
+              mountPath: /home/postgres/s3key
+            {{- end }}
+        {{- if .Values.sidecar.enable }}
+        - name: postgres-sidecar
+          image: quay.io/prometheuscommunity/postgres-exporter:v0.11.1
+          imagePullPolicy: IfNotPresent
+          {{- if .Values.sidecar.resources }}
+          resources:
+          {{- with .Values.sidecar.resources }}
+            limits:
+              cpu: {{ .limit.cpu  | default "100m" }}
+              memory: {{ .limit.memory | default "200Mi" }}
+            requests:
+              cpu: {{ .request.cpu | default "50m" }}
+              memory: {{ .request.memory | default "100Mi" }}
+          {{- end }}
+          {{- end }}
+          ports:
+            - containerPort: 9187
+              name: exporter
+          env:
+          - name: DATA_SOURCE_NAME
+            value: postgres://$(DATA_SOURCE_USER):$(DATA_SOURCE_PASS)@localhost:5432/*?sslmode=disable
+          - name: DATA_SOURCE_USER
+            valueFrom:
+              secretKeyRef:
+                key: superuser
+                name: postgres-{{- .Values.name -}}-admin
+          - name: DATA_SOURCE_PASS
+            valueFrom:
+              secretKeyRef:
+                key: superuser-password
+                name: postgres-{{- .Values.name -}}-admin
+          - name: PG_EXPORTER_EXTEND_QUERY_PATH
+            value: /home/queries.yaml
+          volumeMounts:
+            - name: postgres-{{- .Values.name -}}-data
+              mountPath: /var/lib/postgresql/volume
+            - name: timescaledb-metrics
+              mountPath: /home/
+          {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - postgres-{{- .Values.name }}
+                topologyKey: kubernetes.io/hostname
+      securityContext:
+        fsGroup: 999
+        runAsGroup: 999
+        runAsUser: 999
+      serviceAccountName: postgres-{{- .Values.name }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 90
+      volumes:
+        - name: patroni-config
+          configMap:
+            name: postgres-{{- .Values.name -}}-patroni-config
+        {{- if .Values.backup.enable }}
+        - name: walg-config
+          configMap:
+            name: postgres-{{- .Values.name -}}-walg-config
+        - name: s3key
+          secret:
+            secretName: postgres-{{- .Values.name -}}-s3key
+        {{- end }}
+        {{- if .Values.sidecar.enable }}
+        - name: timescaledb-metrics
+          configMap:
+            name: postgres-{{- .Values.name -}}-metrics
+        {{- end }}
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: postgres-{{- .Values.name -}}-data
+      namespace: {{ .Values.namespace }}
+    spec:
+      storageClassName: {{ .Values.storageclass | default "standard" }}
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.storage.capacity | default "1Gi" }}

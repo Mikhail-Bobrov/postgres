@@ -1,0 +1,30 @@
+namespace: default
+name: my-test
+version: "14"
+labels: {}
+  #key: val
+
+storageclass: {}
+replicas: 1
+resources:
+  request:
+    cpu: 1000m
+    memory: 2048Mi
+  limit:
+    cpu: 1000m
+    memory: 2048Mi
+storage:
+  capacity: 5Gi
+
+sidecar:
+  enable: false
+  resources:
+    request:
+      cpu: 50m
+      memory: 78Mi
+    limit:
+      cpu: 100m
+      memory: 148Mi
+
+backup:
+  enable: false

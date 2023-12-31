@@ -1,0 +1,17 @@
+{{- if .Values.backup.enable }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-{{- .Values.name -}}-walg-config
+  namespace: {{ .Values.namespace }}
+  labels:
+{{- include "postgres-labels" . | indent 4 }}
+data:
+  walg.json: |-
+    {
+      "WALG_DELTA_MAX_STEPS": "0",
+      "WALG_UPLOAD_DISK_CONCURRENCY": "2",
+      "WALG_GS_PREFIX": "gs://yourbucket/testpath",
+      "GOOGLE_APPLICATION_CREDENTIALS": "/home/postgres/s3key/service-account.json"
+    }
+{{- end }}

@@ -1,0 +1,85 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-{{- .Values.name -}}-patroni-config
+  namespace: {{ .Values.namespace }}
+  labels:
+{{- include "postgres-labels" . | indent 4 }}
+data:
+  patroni.yaml.template: |
+    scope: patroni-{{- .Values.name }}
+    namespace: $POD_NAMESPACE
+    name: $POD_NAME
+
+    kubernetes:
+      namespace: $POD_NAMESPACE
+      labels: { app: postgres-{{- .Values.name }}, component: postgres, cluster-name: patroni-{{- .Values.name }} }
+      use_endpoints: true
+      pod_ip: $POD_IP
+
+    restapi:
+      listen: 0.0.0.0:8008
+      connect_address: $POD_IP:8008
+
+    watchdog:
+      mode: off
+
+    bootstrap:
+      pg_hba:
+        - local all  all  trust
+        - host  all all 127.0.0.1/32 trust
+        - host  all all ::1/128 trust
+        - local replication  all trust
+        - host  replication all 127.0.0.1/32 trust
+        - host  replication all ::1/128 trust
+        - host replication replicator 0.0.0.0/0 md5
+        - host all all 0.0.0.0/0 md5
+      initdb:
+        - auth-host: md5
+        - auth-local: trust
+        - encoding: UTF8
+        - locale: en_US.UTF-8
+        - data-checksums
+      dcs:
+        loop_wait: 10
+        retry_timeout: 10
+        synchronous_mode: false
+        ttl: 30
+        master_start_timeout: 120
+        maximum_lag_on_failover: 1048576
+        postgresql:
+          use_pg_rewind: true
+          use_slots: true
+          parameters:
+            archive_command: walg wal-push %p --config /home/postgres/walg/walg.json
+            archive_mode: true
+            archive_timeout: 3600s
+            effective_cache_size: 1536MB
+            hot_standby: 'on'
+            log_min_duration_statement: 300ms
+            log_min_error_statement: ERROR
+            log_min_messages: WARNING
+            maintenance_work_mem: 64MB
+            max_connections: '128'
+            max_prepared_transactions: '128'
+            max_replication_slots: 5
+            max_wal_senders: 10
+            pg_stat_statements.max: 10000
+            pg_stat_statements.track: all
+            shared_buffers: 1024MB
+            shared_preload_libraries: pg_stat_statements
+            track_commit_timestamp: 'on'
+            wal_compression: 'on'
+            wal_keep_segments: 24
+            wal_level: replica
+            wal_log_hints: 'on'
+            work_mem: 4MB
+          recovery_conf:
+            restore_command: walg wal-fetch %f %p --config /home/postgres/walg/walg.json
+
+    log:
+      level: INFO
+
+    postgresql:
+      listen: 0.0.0.0:5432
+      connect_address: $POD_IP:5432

@@ -9,4 +9,4 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: postgres-operator-sa
-  namespace: postgres-sdk-system
+  namespace: operators

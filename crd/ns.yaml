@@ -10,7 +10,7 @@ metadata:
     app.kubernetes.io/part-of: postgres-sdk
     control-plane: controller-manager
     kubernetes.io/metadata.name: postgres-sdk-system
-  name: postgres-sdk-system
+  name: operators
 spec:
   finalizers:
   - kubernetes

@@ -9,8 +9,8 @@ metadata:
     app.kubernetes.io/name: service
     app.kubernetes.io/part-of: postgres-sdk
     control-plane: controller-manager
-  name: postgres-sdk-controller-manager-metrics-service
-  namespace: postgres-sdk-system
+  name: postgres-operator-svc
+  namespace: operators
 spec:
   ports:
   - name: https

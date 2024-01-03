@@ -9,8 +9,8 @@ metadata:
     app.kubernetes.io/name: deployment
     app.kubernetes.io/part-of: postgres-sdk
     control-plane: controller-manager
-  name: postgres-sdk-controller-manager
-  namespace: postgres-sdk-system
+  name: postgres-operator
+  namespace: operators
 spec:
   progressDeadlineSeconds: 600
   replicas: 1

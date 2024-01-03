@@ -11,7 +11,7 @@ spec:
     listKind: PostgresList
     plural: postgres
     singular: postgres
-  scope: Cluster
+  scope: Namespaced
   versions:
   - name: v1alpha1
     schema:

@@ -6,4 +6,4 @@ metadata:
     app.kubernetes.io/created-by: postgres-sdk
     app.kubernetes.io/instance: controller-manager-sa
   name: postgres-operator-sa
-  namespace: postgres-sdk-system
+  namespace: operators

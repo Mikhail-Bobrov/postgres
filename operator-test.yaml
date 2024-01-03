@@ -1,0 +1,13 @@
+apiVersion: alpha.postgres.local/v1alpha1
+kind: Postgres
+metadata:
+  name: postgres-test
+  namespace: default
+spec:
+  name: test-1
+  namespace: test
+  replicas: 1
+  labels:
+    key: val
+  sidecar:
+    enable: true

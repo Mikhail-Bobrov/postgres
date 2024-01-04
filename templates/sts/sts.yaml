@@ -21,7 +21,7 @@ spec:
     spec:
       containers:
         - name: postgres
-          image: {{ .Files.Get "images/image" | default "exdubx/postgres:1.0.2" }}  
+          image: {{ .Files.Get "images/image" | default "exdubx/postgres:14-rel-1.0" }}  
           imagePullPolicy: IfNotPresent
           {{- if .Values.resources }}
           resources:
@@ -91,11 +91,11 @@ spec:
                 secretKeyRef:
                   name: postgres-{{- .Values.name -}}-write
                   key: password
-            - name: PGPASSWORD
+            - name: CLIENT_DATABASE
               valueFrom:
                 secretKeyRef:
-                  name: postgres-{{- .Values.name -}}-admin
-                  key: superuser-password
+                  name: postgres-{{- .Values.name -}}-write
+                  key: database
           volumeMounts:
             - name: postgres-{{- .Values.name -}}-data
               mountPath: /var/lib/postgresql/volume

@@ -1,2 +1,11 @@
 namespace: mon
 name: test1
+
+secrets: {}
+  #superuser_password: dawdwad
+  #replicator_password: dawdawdawdaw
+
+client:
+  name: c3Rhcg==
+  password: d2Fycw==
+  database: bXlfZGF0YWJhc2VfdGVzdA==

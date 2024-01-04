@@ -2,5 +2,5 @@
 - group: alpha.postgres.local
   version: v1alpha1
   kind: Postgres
-  chart: helm-charts/postgres
+  chart: helm-charts/
 #+kubebuilder:scaffold:watch

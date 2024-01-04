@@ -51,8 +51,12 @@ data:
           use_pg_rewind: true
           use_slots: true
           parameters:
+            {{- if .Values.backup.enable }}
             archive_command: walg wal-push %p --config /home/postgres/walg/walg.json
             archive_mode: true
+            {{- else }}
+            archive_mode: false
+            {{- end }}
             archive_timeout: 3600s
             effective_cache_size: 1536MB
             hot_standby: 'on'
@@ -74,8 +78,10 @@ data:
             wal_level: replica
             wal_log_hints: 'on'
             work_mem: 4MB
+          {{- if .Values.backup.enable }}
           recovery_conf:
             restore_command: walg wal-fetch %f %p --config /home/postgres/walg/walg.json
+          {{- end }}
 
     log:
       level: INFO

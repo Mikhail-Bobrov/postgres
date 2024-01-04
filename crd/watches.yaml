@@ -1,0 +1,6 @@
+# Use the 'create api' subcommand to add watches to this file.
+- group: alpha.postgres.local
+  version: v1alpha1
+  kind: Postgres
+  chart: helm-charts/postgres
+#+kubebuilder:scaffold:watch

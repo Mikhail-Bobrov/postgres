@@ -175,7 +175,7 @@ spec:
             name: postgres-{{- .Values.name -}}-walg-config
         - name: s3key
           secret:
-            secretName: postgres-{{- .Values.name -}}-s3key
+            secretName: {{ .Values.backup.platform.secret.name }}
         {{- end }}
         {{- if .Values.sidecar.enable }}
         - name: timescaledb-metrics

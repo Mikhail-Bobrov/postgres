@@ -11,7 +11,9 @@ data:
     {
       "WALG_DELTA_MAX_STEPS": "0",
       "WALG_UPLOAD_DISK_CONCURRENCY": "2",
-      "WALG_GS_PREFIX": "gs://yourbucket/testpath",
-      "GOOGLE_APPLICATION_CREDENTIALS": "/home/postgres/s3key/service-account.json"
+      {{- if eq .Values.backup.platform.name "gcp" }}
+      "WALG_GS_PREFIX": "{{- .Values.backup.platform.bucketName | default "gs://my-bucket" -}}",
+      "GOOGLE_APPLICATION_CREDENTIALS": "/home/postgres/s3key/{{- .Values.backup.platform.secret.key -}}"
+      {{- end }}
     }
 {{- end }}

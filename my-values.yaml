@@ -2,10 +2,17 @@ namespace: mon
 name: test1
 
 secrets: {}
-  #superuser_password: dawdwad
-  #replicator_password: dawdawdawdaw
 
 client:
   name: c3Rhcg==
   password: d2Fycw==
   database: bXlfZGF0YWJhc2VfdGVzdA==
+
+backup:
+  enable: true
+  platform:
+    name: gcp
+    secret:
+      name: mysecret
+      key: key.json
+    bucketName: gs://yourbucket/testpath

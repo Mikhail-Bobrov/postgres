@@ -34,3 +34,10 @@ sidecar:
 
 backup:
   enable: false
+  platform:
+    name: gcp #aws #azure #bare metal #gcp
+    #there you must create secret for s3 backup
+    secret:
+      name: secret #your secret name  kubectl create  secret generic -n namespace secretname --from-file=key.json 
+      key: key.json
+    bucketName: gs://my-custom-bucket

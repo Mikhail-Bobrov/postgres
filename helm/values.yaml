@@ -3,6 +3,8 @@ name: my-test
 version: "14"
 labels: {}
   #key: val
+imagePullSecrets: {}
+  #- secretname
 secrets: {}
   #superuser_password: pass #echo -n "anyPassword" | base64
   #replicator_password: pass #echo -n "anyPassword" | base64
@@ -45,4 +47,4 @@ backup:
 
 config:
   hba: {}
-    #- some custom hba
+    #- host databasename  username      ip (0.0.0.0/0)  md5 or trust

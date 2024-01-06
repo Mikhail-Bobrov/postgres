@@ -9,13 +9,13 @@ metadata:
 data:
   queries.yaml  : |+
 
-    # pg_stat_archiver:
-    #   query: "SELECT archived_count,failed_count FROM pg_stat_archiver"
-    #   metrics:
-    #     - archived_count:
-    #         usage: "GAUGE"
-    #         description: "Number of WAL files that have been successfully archived"
-    #     - failed_count:
-    #         usage: "GAUGE"
-    #         description: "Number of failed attempts for archiving WAL files"
+    pg_stat_archiver:
+      query: "SELECT archived_count,failed_count FROM pg_stat_archiver"
+      metrics:
+        - archived_count:
+            usage: "GAUGE"
+            description: "Number of WAL files that have been successfully archived"
+        - failed_count:
+            usage: "GAUGE"
+            description: "Number of failed attempts for archiving WAL files"
 {{- end }}

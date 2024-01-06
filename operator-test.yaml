@@ -1,22 +1,24 @@
 apiVersion: alpha.postgres.local/v1alpha1
 kind: Postgres
 metadata:
-  name: postgres-testv3
+  name: postgres-version1
   namespace: mon
 spec:
-  name: mon2
+  name: version1
   namespace: mon
   replicas: 2
-  labels:
-    key: val
   sidecar:
-    enable: true
+    enable: false
   storage:
-    capacity: 10Gi
+    capacity: 5Gi
   client:
-    name: Q2xpZW50
-    password:  cGFzc3dvcmQxMjM=
-    database: bXlfZGF0YWJhc2U=
+    name: dGVzdHVzZXI=
+    password:  c3Ryb25ncGFzc3dvcmQ=
+    database: ZGF0YWJhc2Ux
+
+  config:
+    hba:
+      - host database1 testuser 0.0.0.0/0 trust
 
   backup:
     enable: true

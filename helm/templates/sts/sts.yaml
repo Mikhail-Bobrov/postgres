@@ -145,7 +145,7 @@ spec:
           volumeMounts:
             - name: postgres-{{- .Values.name -}}-data
               mountPath: /var/lib/postgresql/volume
-            - name: timescaledb-metrics
+            - name: postgres-metrics
               mountPath: /home/
           {{- end }}
       affinity:
@@ -166,6 +166,12 @@ spec:
         runAsUser: 999
       serviceAccountName: postgres-{{- .Values.name }}
       restartPolicy: Always
+      {{- if .Values.imagePullSecrets }}
+      imagePullSecrets:
+      {{- range .Values.imagePullSecrets }}
+      - name: {{ . }}
+      {{- end }}
+      {{- end }}
       terminationGracePeriodSeconds: 90
       volumes:
         - name: patroni-config
@@ -183,7 +189,7 @@ spec:
             secretName: {{ .Values.backup.platform.secret.name }}
         {{- end }}
         {{- if .Values.sidecar.enable }}
-        - name: timescaledb-metrics
+        - name: postgres-metrics
           configMap:
             name: postgres-{{- .Values.name -}}-metrics
         {{- end }}

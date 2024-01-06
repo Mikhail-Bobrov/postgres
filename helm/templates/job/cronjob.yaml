@@ -1,0 +1,24 @@
+{{- if and .Values.backup.enable .Values.backup.cronjob }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-backup-{{- .Values.name }}-walg
+  namespace: {{ .Values.namespace }}
+spec:
+  schedule: {{ .Values.backup.cronjob.schedule | quote | default "0 1 * * *" }}
+  suspend: {{ .Values.backup.cronjob.suspend | default "false" }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: postgres-backup-{{- .Values.name }}-walg
+          containers:
+          - name: postgres
+            image: {{ .Files.Get "images/cronjob" }}
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/bash
+            - -c
+            - kubectl exec -ti -n {{ .Values.namespace }} services/postgres-{{- .Values.name -}}-{{- .Values.backup.cronjob.backupfrom | default "master" }} -- walg backup-push $PGDATA --config /home/postgres/walg/walg.json
+          restartPolicy: OnFailure
+{{- end }}

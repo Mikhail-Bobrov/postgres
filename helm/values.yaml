@@ -36,7 +36,11 @@ sidecar:
       memory: 148Mi
 
 backup:
-  enable: false
+  enable: true
+  cronjob: {}
+   # suspend: false
+   # schedule: "0 1 * * *"
+   # backupfrom: master
   platform:
     name: gcp #aws #azure #bare metal #gcp
     #there you must create secret for s3 backup for gcp

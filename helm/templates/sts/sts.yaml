@@ -84,21 +84,23 @@ spec:
             - name: CLIENT_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: postgres-{{- .Values.name -}}-write
+                  name: postgres-{{- .Values.name -}}-client
                   key: user
             - name: CLIENT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-{{- .Values.name -}}-write
+                  name: postgres-{{- .Values.name -}}-client
                   key: password
             - name: CLIENT_DATABASE
               valueFrom:
                 secretKeyRef:
-                  name: postgres-{{- .Values.name -}}-write
+                  name: postgres-{{- .Values.name -}}-client
                   key: database
           volumeMounts:
             - name: postgres-{{- .Values.name -}}-data
               mountPath: /var/lib/postgresql/volume
+            - name: postgres-pghba
+              mountPath: /home/postgres/pghba
             - name: patroni-config
               mountPath: /home/postgres/patroni
             {{- if .Values.backup.enable }}
@@ -169,6 +171,9 @@ spec:
         - name: patroni-config
           configMap:
             name: postgres-{{- .Values.name -}}-patroni-config
+        - name: postgres-pghba
+          configMap:
+            name: postgres-{{- .Values.name -}}-pghba-config
         {{- if .Values.backup.enable }}
         - name: walg-config
           configMap:

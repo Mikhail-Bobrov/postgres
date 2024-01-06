@@ -1,15 +1,14 @@
 apiVersion: alpha.postgres.local/v1alpha1
 kind: Postgres
 metadata:
-  name: postgres-testv2
+  name: postgres-testv3
   namespace: mon
 spec:
-  name: mon1
+  name: mon2
   namespace: mon
   replicas: 2
   labels:
     key: val
-    user: hek
   sidecar:
     enable: true
   storage:
@@ -18,3 +17,12 @@ spec:
     name: Q2xpZW50
     password:  cGFzc3dvcmQxMjM=
     database: bXlfZGF0YWJhc2U=
+
+  backup:
+    enable: true
+    platform:
+      name: gcp
+      secret:
+        name: postgres-walg-test1
+        key: key.json
+      bucketName: gs://postgres-default-bb-test-main/test

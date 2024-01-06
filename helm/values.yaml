@@ -7,9 +7,10 @@ secrets: {}
   #superuser_password: pass #echo -n "anyPassword" | base64
   #replicator_password: pass #echo -n "anyPassword" | base64
 client:
- # name: #echo -n "clientName" | base64
- # password:  #echo -n "clientpass" | base64
- # database: my_database_name #echo -n "clientdatabase" | base64      without '-' (test-test)  its not correct for postgres
+  name: c3Rhcg== #echo -n "clientName" | base64    (name must not be equal 'user')
+  password: d2Fycw== #echo -n "clientpass" | base64
+  database: bXlfZGF0YWJhc2VfdGVzdA== ## my_database_name #echo -n "clientdatabase" | base64      without '-' (test-test)  its not correct for postgres
+
 storageclass: {}
 replicas: 1
 resources:
@@ -36,8 +37,12 @@ backup:
   enable: false
   platform:
     name: gcp #aws #azure #bare metal #gcp
-    #there you must create secret for s3 backup
+    #there you must create secret for s3 backup for gcp
     secret:
       name: secret #your secret name  kubectl create  secret generic -n namespace secretname --from-file=key.json 
       key: key.json
     bucketName: gs://my-custom-bucket
+
+config:
+  hba: {}
+    #- some custom hba

@@ -25,15 +25,6 @@ data:
       mode: off
 
     bootstrap:
-      pg_hba:
-        - local all  all  trust
-        - host  all all 127.0.0.1/32 trust
-        - host  all all ::1/128 trust
-        - local replication  all trust
-        - host  replication all 127.0.0.1/32 trust
-        - host  replication all ::1/128 trust
-        - host replication replicator 0.0.0.0/0 md5
-        - host all all 0.0.0.0/0 md5
       initdb:
         - auth-host: md5
         - auth-local: trust
@@ -60,6 +51,7 @@ data:
             archive_timeout: 3600s
             effective_cache_size: 1536MB
             hot_standby: 'on'
+            hba_file: /home/postgres/pghba/pg_hba.conf
             log_min_duration_statement: 300ms
             log_min_error_statement: ERROR
             log_min_messages: WARNING

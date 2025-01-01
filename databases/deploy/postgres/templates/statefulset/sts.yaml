@@ -1,0 +1,244 @@
+kind: StatefulSet
+apiVersion: apps/v1
+metadata:
+  name: "{{ include "postgres.fullname" . }}"
+  namespace: {{ include "postgres.namespace" . }}
+  labels:
+{{- include "postgres.labels" . | nindent 4 }}
+spec:
+  podManagementPolicy: "Parallel"
+  replicas: {{ .Values.sts.replicas | default "1" }}
+  serviceName: "{{ include "postgres.fullname" . }}-headless"
+  selector:
+    matchLabels:
+{{- include "postgres.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      namespace: {{ include "postgres.namespace" . }}
+      labels:
+        {{- if .Values.sts.sidecar.enabled }}
+        postgres-exporter-enabled: "true"
+        patroni-exporter-enabled: "true"
+        {{- end }}
+{{- include "postgres.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: postgres
+          image: "{{ .Values.sts.image.registry }}/{{ .Values.sts.image.repository }}:{{ .Values.sts.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          resources:
+          {{- toYaml .Values.sts.resources | nindent 12 }}
+          ports:
+            - containerPort: 5432
+              name: sql
+            - containerPort: 8008
+              name: patroni
+          {{- if .Values.sts.readinessProbe }}
+          readinessProbe:
+            {{- toYaml .Values.sts.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.sts.livenessProbe }}
+          livenessProbe:
+            {{- toYaml .Values.sts.livenessProbe | nindent 12 }}
+          {{- end }}
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: PATRONI_REPLICATION_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "postgres.fullname" . }}-admin-secret"
+                  key: replicator
+            - name: PATRONI_REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "postgres.fullname" . }}-admin-secret"
+                  key: replicator-password
+            - name: PATRONI_SUPERUSER_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "postgres.fullname" . }}-admin-secret"
+                  key: superuser
+            - name: PATRONI_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "postgres.fullname" . }}-admin-secret"
+                  key: superuser-password
+            - name: PGDATA
+              value: "{{ .Values.postgres.dataPath | default "/data" }}/postgres"
+            {{- if .Values.backup.enabled }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "postgres.fullname" . }}-admin-secret"
+                  key: superuser-password
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: "{{ include "postgres.fullname" . }}-admin-secret"
+                  key: superuser
+            {{- end }}
+            {{- if .Values.sts.env }}
+            {{- range $key, $value := .Values.sts.env }}
+            - name: {{ $key }}
+              value: {{ $value | quote }}
+            {{- end }}
+            {{- end }}
+            {{- if .Values.sts.envSecrets }}
+            {{- range .Values.sts.envSecrets }}
+            - name: {{ .name }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .secretName }}
+                  key: {{ .secretKey }}
+            {{- end }}
+            {{- end }}
+          volumeMounts:
+            - name: postgres-data
+              mountPath: {{ .Values.postgres.dataPath | default "/data"}}
+            - name: postgres-pghba
+              mountPath: /home/postgres/pghba
+            - name: patroni-config
+              mountPath: /etc/patroni
+            {{- if .Values.postgres.initsql }}
+            - name: init-scripts
+              mountPath: /docker-entrypoint-initdb.d/init.sql
+              subPath: init.sql
+            {{- end }}
+            {{- if .Values.backup.enabled }}
+            - name: walg-config
+              mountPath: /root/.walg.json
+              subPath: .walg.json
+            {{- end }}
+        {{- if .Values.sts.sidecar.enabled }}
+        - name: metrics-sidecar
+          image: "{{ .Values.sts.sidecar.image.registry }}/{{ .Values.sts.sidecar.image.repository }}:{{ .Values.sts.sidecar.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          resources:
+          {{- toYaml .Values.sts.sidecar.resources | nindent 12 }}
+          ports:
+            - containerPort: 9187
+              name: metrics
+          env:
+          - name: DATA_SOURCE_URI
+            value: "localhost:5432/postgres?sslmode=disable"
+          - name: DATA_SOURCE_USER
+            valueFrom:
+              secretKeyRef:
+                key: superuser
+                name: "{{ include "postgres.fullname" . }}-admin-secret"
+          - name: DATA_SOURCE_PASS
+            valueFrom:
+              secretKeyRef:
+                key: superuser-password
+                name: "{{ include "postgres.fullname" . }}-admin-secret"
+          - name: PG_EXPORTER_EXTEND_QUERY_PATH
+            value: /etc/postgres-metrics/queries.yaml
+          volumeMounts:
+            - name: sidecar-metrics
+              mountPath: /etc/postgres-metrics
+        {{- end }}
+      affinity:
+      {{- if .Values.global.affinity }}
+      {{- with .Values.global.affinity }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- if .Values.sts.affinity }}
+      {{- with .Values.sts.affinity }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- end }}
+      {{- if .Values.rbac.serviceAccount.name }}
+      serviceAccountName: {{ .Values.rbac.serviceAccount.name }}
+      {{- else }}
+      serviceAccountName: "{{ include "postgres.fullname" . }}-sa"
+      {{- end }}
+      {{- with .Values.sts.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 90
+      {{- if .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.global.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- else if .Values.sts.imagePullSecrets }}
+      imagePullSecrets:
+        {{- range .Values.sts.imagePullSecrets }}
+        - name: {{ . }}
+        {{- end }}
+      {{- end }}
+      tolerations:
+      {{- if .Values.global.tolerations }}
+      {{- with .Values.global.tolerations }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- end }}
+      {{- if .Values.sts.tolerations }}
+      {{- with .Values.sts.tolerations }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- end }}
+      volumes:
+        - name: patroni-config
+          configMap:
+            name: "{{ include "postgres.fullname" . }}-init-patroni-config"
+        {{- if .Values.sts.sidecar.enabled }}
+        - name: sidecar-metrics
+          configMap:
+            name: "{{ include "postgres.fullname" . }}-sidecar-metrics"
+        {{- end }}
+        - name: postgres-pghba
+          configMap:
+            name: "{{ include "postgres.fullname" . }}-pghba-config"
+        {{- if .Values.postgres.initsql }}
+        - name: init-scripts
+          configMap:
+            name: "{{ include "postgres.fullname" . }}-initsql-script"
+        {{- end }}
+        {{- if .Values.backup.enabled }}
+        - name: walg-config
+          configMap:
+            name: "{{ include "postgres.fullname" . }}-backup-config"
+        {{- end }}
+      {{- if .Values.sts.volume.existingClaim }}
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: {{ .Values.sts.volume.existingClaim }}
+      {{- end }}
+      {{- if and (not .Values.sts.volume.enabled) (not .Values.sts.volume.existingClaim) }}
+        - name: postgres-data
+          emptyDir: {}
+      {{- end }}
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate
+  {{- if and .Values.sts.volume.enabled (not .Values.sts.volume.existingClaim) }}
+  volumeClaimTemplates:
+  - apiVersion: v1
+    kind: PersistentVolumeClaim
+    metadata:
+      name: postgres-data
+      namespace: {{ include "postgres.namespace" . }}
+    spec:
+      storageClassName: {{ .Values.global.storageClassName | default .Values.sts.volume.storageClassName | default "" | quote }}
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ .Values.sts.volume.size | default "5Gi" }}
+  {{- end }}

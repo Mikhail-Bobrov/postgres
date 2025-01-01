@@ -1,0 +1,21 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ include "postgres.fullname" . }}-backup-config"
+  namespace: {{ include "postgres.namespace" . }}
+  labels:
+    {{- include "postgres.labels" . | nindent 4 }}
+data:
+  .walg.json: |-
+    {
+      "WALG_DELTA_MAX_STEPS": "0",
+      {{- if eq .Values.backup.platform "aws" }}
+      "AWS_REGION": {{ .Values.backup.aws.region | quote }},
+      "WALG_S3_PREFIX": {{ .Values.backup.aws.s3prefix | quote }},
+      "AWS_ACCESS_KEY_ID": "hiden",
+      "AWS_SECRET_ACCESS_KEY": "hiden"
+      {{- end }}
+      "WALG_UPLOAD_DISK_CONCURRENCY": "2"
+    }
+{{- end }}

@@ -1,0 +1,41 @@
+{{- if and .Values.backup.enabled .Values.backup.cronjob.enabled }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: "{{ include "postgres.fullname" . }}-backup-sa"
+  namespace: {{ include "postgres.namespace" . }}
+  labels:
+    backup: "true"
+    walg: "true"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: "{{ include "postgres.fullname" . }}-backup-role"
+  namespace: {{ include "postgres.namespace" . }}
+  labels:
+    backup: "true"
+    walg: "true"
+rules:
+  - apiGroups: [""]
+    resources: ["endpoints","pods","services", "pods/exec"]
+    verbs: ["get", "list", "watch", "create"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: "{{ include "postgres.fullname" . }}-backup-bidn"
+  namespace: {{ include "postgres.namespace" . }}
+  labels:
+    backup: "true"
+    walg: "true"
+roleRef:
+  kind: Role
+  name: "{{ include "postgres.fullname" . }}-backup-role"
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+  - kind: ServiceAccount
+    name: "{{ include "postgres.fullname" . }}-backup-sa"
+    namespace: {{ include "postgres.namespace" . }}
+{{- end }}

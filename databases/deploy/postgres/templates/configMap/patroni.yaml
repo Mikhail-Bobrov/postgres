@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ include "postgres.fullname" . }}-init-patroni-config"
+  namespace: {{ include "postgres.namespace" . }}
+  labels:
+{{- include "postgres.labels" . | nindent 4 }}
+data:
+  patroni.yaml: |
+    scope: patroni-{{ .Release.Name }}
+    namespace: $POD_NAMESPACE
+    name: $POD_NAME
+
+    kubernetes:
+      namespace: $POD_NAMESPACE
+      labels: { app: postgres, component: {{ .Release.Name }}, cluster-name: patroni-{{ .Release.Name }}, app.kubernetes.io/name: {{ include "postgres.name" . }} }
+      use_endpoints: true
+      pod_ip: $POD_IP
+
+    restapi:
+      listen: 0.0.0.0:8008
+      connect_address: $POD_IP:8008
+
+    bootstrap:
+      {{- if .Values.postgres.initsql }}
+      post_bootstrap: "psql -U postgres -f /docker-entrypoint-initdb.d/init.sql"
+      {{- end }}
+      {{- if .Values.postgres.patroniConfig.bootstrap.custominitdb }}
+      {{- with .Values.postgres.patroniConfig.bootstrap.custominitdb }}
+      initdb:
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- else }}
+      initdb:
+        - auth-host: md5
+        - auth-local: trust
+        - encoding: UTF8
+        - locale: en_US.UTF-8
+        - data-checksums
+      {{- end }}
+      dcs:
+        loop_wait: {{ .Values.postgres.patroniConfig.dcs.loop_wait | default "10" }}
+        retry_timeout: {{ .Values.postgres.patroniConfig.dcs.retry_timeout | default "10" }}
+        synchronous_mode: {{ .Values.postgres.patroniConfig.dcs.synchronous_mode | default "false" }}
+        ttl: {{ .Values.postgres.patroniConfig.dcs.ttl | default "30"}}
+        master_start_timeout: {{ .Values.postgres.patroniConfig.dcs.master_start_timeout | default "120" }}
+        maximum_lag_on_failover: {{ .Values.postgres.patroniConfig.dcs.maximum_lag_on_failover | default "1048576" }}
+        {{- if .Values.postgres.patroniConfig.dcs.extraDcs }}
+        {{- with .Values.postgres.patroniConfig.dcs.extraDcs }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- end }} 
+        postgresql:
+          use_pg_rewind: true
+          use_slots: true
+          parameters:
+            {{- if .Values.backup.enabled }}
+            archive_command: walg wal-push %p --config /root/.walg.json
+            archive_mode: true
+            {{- else }}
+            archive_mode: false
+            {{- end }}
+            archive_timeout: 3600s
+            effective_cache_size: 1536MB
+            hot_standby: 'on'
+            hba_file: /home/postgres/pghba/pg_hba.conf
+            log_min_duration_statement: 300ms
+            log_min_error_statement: ERROR
+            log_min_messages: WARNING
+            maintenance_work_mem: 64MB
+            max_connections: '128'
+            max_prepared_transactions: '128'
+            max_replication_slots: 5
+            max_wal_senders: 10
+            pg_stat_statements.max: 10000
+            pg_stat_statements.track: all
+            shared_buffers: 1024MB
+            shared_preload_libraries: pg_stat_statements
+            track_commit_timestamp: 'on'
+            wal_compression: 'on'
+            wal_keep_segments: 24
+            wal_level: replica
+            wal_log_hints: 'on'
+            work_mem: 4MB
+          {{- if .Values.backup.enabled }}
+          recovery_conf:
+            restore_command: walg wal-fetch %f %p --config /root/.walg.json
+          {{- end }}
+
+    log:
+      level: INFO
+
+    watchdog:
+      mode: off
+
+    postgresql:
+      listen: 0.0.0.0:5432
+      connect_address: $POD_IP:5432
+      data_dir: $PGDATA
+      authentication:
+        replication:
+          username: $PATRONI_REPLICATION_USERNAME
+          password: $PATRONI_REPLICATION_PASSWORD
+        superuser:
+          username: $PATRONI_SUPERUSER_USERNAME
+          password: $PATRONI_SUPERUSER_PASSWORD

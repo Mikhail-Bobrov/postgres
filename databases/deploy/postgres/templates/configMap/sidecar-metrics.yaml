@@ -1,0 +1,21 @@
+{{- if .Values.sts.sidecar.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ include "postgres.fullname" . }}-sidecar-metrics"
+  namespace: {{ include "postgres.namespace" . }}
+  labels:
+{{- include "postgres.labels" . | nindent 4 }}
+data:
+  queries.yaml  : |+
+
+    pg_stat_archiver:
+      query: "SELECT archived_count,failed_count FROM pg_stat_archiver"
+      metrics:
+        - archived_count:
+            usage: "GAUGE"
+            description: "Number of WAL files that have been successfully archived"
+        - failed_count:
+            usage: "GAUGE"
+            description: "Number of failed attempts for archiving WAL files"
+{{- end }}

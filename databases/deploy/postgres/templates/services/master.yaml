@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: "{{ include "postgres.fullname" . }}-master"
+  namespace: {{ include "postgres.namespace" . }}
+  labels:
+    master: "true"
+    primary: "true"
+{{- include "postgres.labels" . | nindent 4 }}
+spec:
+  clusterIP: "None"
+  selector:
+    role: primary
+{{- include "postgres.selectorLabels" . | nindent 4 }}
+  ports:
+    - port: 5432
+      name: sql
+    - port: 8008
+      name: patroni

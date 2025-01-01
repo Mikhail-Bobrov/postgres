@@ -1,0 +1,17 @@
+{{- if .Values.postgres.initsql }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: "{{ include "postgres.fullname" . }}-initsql-script"
+  namespace: {{ include "postgres.namespace" . }}
+  labels:
+{{- include "postgres.labels" . | nindent 4 }}
+data:
+  init.sql: |
+    {{ if .Values.postgres.initsql.file }}
+    {{ .Files.Get .Values.postgres.initsql.file | nindent 4 }}
+    {{ else if .Values.postgres.initsql.inline }}
+    {{ .Values.postgres.initsql.inline | nindent 4 }}
+    {{ end}}
+
+{{- end }}

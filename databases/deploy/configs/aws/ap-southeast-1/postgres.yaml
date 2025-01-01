@@ -1,0 +1,54 @@
+global:
+  imagePullSecrets: ["puller"]
+  extralabels:
+    digatex: "true"
+  storageClassName: "longhorn"
+
+postgres:
+  initsql:
+    inline: |
+      CREATE DATABASE example_db;
+      CREATE DATABASE example_db2;
+      CREATE USER example_user WITH ENCRYPTED PASSWORD 'example_password';
+
+backup:
+  enabled: true
+  cronjob:
+    enabled: true
+
+sts:
+  sidecar:
+    enabled: true
+  image:
+    registry: "repo"
+    repository: "myrepo/postgres"
+    tag: "14"
+  resources:
+    limits:
+      cpu: 800m
+      memory: 1024Mi
+    requests:
+      cpu: 400m
+      memory: 658Mi
+  tolerations:
+    - key: "postgres"
+      operator: "Equal"
+      value: "true"
+      effect: "NoSchedule"
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - postgres
+            topologyKey: kubernetes.io/hostname
+rbac:
+  serviceAccount:
+  # just example
+    annotations:
+      iam.amazonaws.com/role: arn:aws:iam::${AWS_ACCOUNT_ID}:role/non

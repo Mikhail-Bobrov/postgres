@@ -1,0 +1,180 @@
+# Default values for postgres.
+# This is a YAML-formatted file.
+# This is to override the chart name.
+nameOverride: ""
+fullnameOverride: ""
+namespaceOverride: ""
+
+# Global settings
+global:
+  extralabels: {}
+  affinity: {}
+    # podAntiAffinity:
+    #   preferredDuringSchedulingIgnoredDuringExecution:
+    #     - weight: 100
+    #       podAffinityTerm:
+    #         labelSelector:
+    #           matchExpressions:
+    #             - key: app2
+    #               operator: In
+    #               values:
+    #                 - postgres
+    #         topologyKey: kubernetes.io/hostname
+  tolerations: []
+  # - key: "test"
+  #   operator: "Equal"
+  #   value: "true"
+  #   effect: "NoSchedule"
+  storageClassName: ""
+  imagePullSecrets: []
+
+# statefulset settings
+sts:
+  sidecar:
+    enabled: false
+    # https://hub.docker.com/r/prometheuscommunity/postgres-exporter
+    image:
+      registry: "prometheuscommunity"
+      repository: "postgres-exporter"
+      tag: "v0.16.0"
+    resources:
+      limits:
+        cpu: 60m
+        memory: 64Mi
+      requests:
+        cpu: 50m
+        memory: 32Mi 
+      # TODO extra config
+  replicas: 1
+  tolerations: []
+  # - key: "mon"
+  #   operator: "Equal"
+  #   value: "true"
+  #   effect: "NoSchedule"
+  affinity: {}
+    # podAntiAffinity:
+    #   preferredDuringSchedulingIgnoredDuringExecution:
+    #     - weight: 100
+    #       podAffinityTerm:
+    #         labelSelector:
+    #           matchExpressions:
+    #             - key: app
+    #               operator: In
+    #               values:
+    #                 - postgres
+    #         topologyKey: kubernetes.io/hostname
+  volume:
+    enabled: true  # if false, no PVC will be created (emptyDir will be used)  https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
+    storageClassName: "sc"
+    size: ""  #default 5Gi
+    existingClaim: ""   # your existing claim name
+  env: []
+   # MY_KEY: "val"
+  envSecrets: []
+  # - name: SECRET_VAR
+  #   secretName: secretname
+  #   secretKey: secret-key
+  imagePullSecrets: []
+  # there will be scripts in /home/postgres/health.sh to check health
+  readinessProbe:
+    exec:
+      command:
+        - /home/postgres/health.sh
+    initialDelaySeconds: 20
+    periodSeconds: 15
+    timeoutSeconds: 10
+    successThreshold: 1
+    failureThreshold: 3
+  livenessProbe: {}
+  image:
+    registry: "reg"
+    repository: "postgres"
+    tag: "14"
+  resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  nodeSelector: {}
+
+# everything related to backup
+backup:
+  enabled: false
+  cronjob:
+    enabled: false
+    # schedule: "0 1 * * *"
+    # suspend: false
+    image:
+      registry: "bitnami"
+      repository: "kubectl"
+      tag: "1.29"
+  platform: "aws"  #TODO supported: aws, gcp, azure
+  aws:
+    region: "ap-southeast-1"
+    s3prefix: "s3://s3-bucket-name/backup"
+
+# everything related to patroni and postgres config
+postgres:
+  dataPath: "/var/lib/postgresql/data"
+  # every script will be executed as postgres user
+  initsql: {}
+    # path to file  (file has more preority then inline)
+    #file: sql-scripts/init.sql
+    # simple string
+    # inline: |
+    #   CREATE DATABASE example_db;
+    #   CREATE USER example_user WITH ENCRYPTED PASSWORD 'example_password';
+    #   GRANT ALL PRIVILEGES ON DATABASE example_db TO example_user;
+    #   CREATE EXTENSION pg_profile;
+  patroniConfig:
+    pghba_extra: {}
+      #host  all  all   0.0.0.0/0   md5
+    bootstrap:
+      custominitdb: {}
+        # default is
+        # - auth-host: md5
+        # - auth-local: trust
+        # - encoding: UTF8
+        # - locale: en_US.UTF-8
+        # - data-checksums
+    dcs:
+    # https://patroni.readthedocs.io/en/latest/dynamic_configuration.html
+      ttl: 30
+      retry_timeout: 10
+      synchronous_mode: false
+      loop_wait: 10
+      master_start_timeout: 120
+      maximum_lag_on_failover: "1048576" #1mb
+      extraDcs: {}
+      # TODO example additional params
+        #maximum_lag_on_syncnode: "1048576"
+    postgresParameters: {}
+    # TODO default params here
+      #hba_file: /home/postgres/pghba/pg_hba.conf
+
+rbac:
+  # Specifies whether RBAC resources should be created
+  serviceAccount:
+    enabled: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+
+
+# TODO
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+

@@ -1,0 +1,163 @@
+---
+apiVersion: "acid.zalan.do/v1"
+kind: postgresql
+metadata:
+  name: postgres-latest-test
+  namespace: mon
+  labels:
+    environment: backups
+    monitoring: "true"
+spec:
+  dockerImage: ghcr.io/zalando/spilo-15:3.0-p1
+  teamId: "undefined"
+  numberOfInstances: 1
+  users:
+    projectuseradmin:
+    - superuser
+    testuser: []
+  databases:
+    testdb: testuser
+    testdb2: projectuseradmin
+  clone:
+    cluster: "postgres-latest-test"
+    timestamp: "2025-01-05T17:42:06+00:00"
+  patroni:
+    initdb:
+      data-checksums: "true"
+      encoding: UTF8
+      locale: en_US.UTF-8
+    pg_hba:
+    - local   all             all                                     trust
+    - host    all             all             127.0.0.1/32            trust
+    - host    all             all             ::1/128                 trust
+    - local   replication     all                                     trust
+    - host    replication     all             127.0.0.1/32            trust
+    - host    replication     all             ::1/128                 trust
+    - hostssl all             all             0.0.0.0/0               md5
+    - host    all             all             0.0.0.0/0               md5
+    - host    replication    replicator       0.0.0.0/0               md5
+    ttl: 30
+    loop_wait: 10
+    retry_timeout: 10
+    synchronous_mode: false
+    maximum_lag_on_failover: 1048576 #1mb
+  postgresql:
+    version: "15"
+    parameters:
+      shared_buffers: "32MB"
+      max_connections: "120"
+      log_min_duration_statement: 300ms
+      log_min_error_statement: ERROR
+      log_min_messages: WARNING
+      maintenance_work_mem: 64MB
+      log_destination: "stderr"
+      max_prepared_transactions: '1536'
+      max_replication_slots: "5"
+      max_standby_archive_delay: "57600000"
+      max_standby_streaming_delay: "57600000"
+      max_wal_senders: "10"
+      pg_stat_statements.max: "10000"
+      pg_stat_statements.track: all
+      shared_preload_libraries: pg_stat_statements
+      track_commit_timestamp: 'on'
+      wal_compression: 'on'
+      wal_keep_size: '384'
+      wal_level: replica
+      wal_log_hints: 'on'
+      work_mem: 4MB
+  env:
+    - name: ALLOW_NOSSL
+      value: "true"
+    - name: BACKUP_NUM_TO_RETAIN
+      value: "3"
+    - name: BACKUP_SCHEDULE
+      value: "0 1 * * *"
+    - name: USE_WALG_BACKUP
+      value: "true"
+    - name: USE_WALG_RESTORE
+      value: "true"
+    - name: WALG_DELTA_MAX_STEPS
+      value: "0"
+    - name: WALG_UPLOAD_DISK_CONCURRENCY
+      value: "2"
+    - name: WALE_BINARY
+      value: "wal-g"
+    - name: AWS_REGION
+      value: "ap-southeast-1"
+    - name: WALG_S3_PREFIX
+      value: "s3://backups-last3"
+    - name: AWS_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          name: "test"
+          key: AWS_ACCESS_KEY_ID
+    - name: AWS_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: "test"
+          key: AWS_SECRET_ACCESS_KEY
+# restore
+    - name: CLONE_AWS_ACCESS_KEY_ID
+      valueFrom:
+        secretKeyRef:
+          name: "test"
+          key: AWS_ACCESS_KEY_ID
+    - name: CLONE_AWS_SECRET_ACCESS_KEY
+      valueFrom:
+        secretKeyRef:
+          name: "test"
+          key: AWS_SECRET_ACCESS_KEY
+    - name: CLONE_AWS_REGION
+      value: "ap-southeast-1"
+    - name: CLONE_WALG_S3_PREFIX
+      value: "s3://backups-last2"
+    - name: CLONE_USE_WALG_RESTORE
+      value: "true"
+# restore
+  volume:
+    size: 5Gi
+    storageClass: longhorn
+  enableShmVolume: true
+  podAnnotations:
+    testannotation: "true"
+  nodeAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 1
+      preference:
+        matchExpressions:
+        - key: "app.stateful/component"
+          operator: In
+          values:
+          - "postgres-operator"
+  resources:
+    requests:
+      cpu: "100m"
+      memory: 500Mi
+    limits:
+      cpu: "500m"
+      memory: 1Gi
+  sidecars:
+    - name: exporter
+      image: quay.io/prometheuscommunity/postgres-exporter:v0.14.0
+      args:
+      - --collector.stat_statements
+      ports:
+      - name: exporter
+        containerPort: 9187
+        protocol: TCP
+      resources:
+        limits:
+          cpu: 100m
+          memory: 256M
+        requests:
+          cpu: 100m
+          memory: 256M
+      env:
+      - name: "DATA_SOURCE_URI"
+        value: "localhost/postgres?sslmode=require"
+      - name: "DATA_SOURCE_USER"
+        value: "$(POSTGRES_USER)"
+      - name: "DATA_SOURCE_PASS"
+        value: "$(POSTGRES_PASSWORD)"
+
+

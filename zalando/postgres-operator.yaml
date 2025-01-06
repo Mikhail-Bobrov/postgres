@@ -1,0 +1,36 @@
+enableJsonLogging: true
+
+configUsers:
+  replication_username: replicator
+
+configKubernetes:
+  enable_pod_antiaffinity: true
+  enable_readiness_probe: true
+  secret_name_template: "{cluster}-{username}-creds"
+  inherited_labels:
+  - monitoring
+  - database-monitoring-enabled
+  - environment
+
+configAwsOrGcp:
+  aws_region: ap-southeast-1
+
+podServiceAccount:
+  name: "postgres-sa"
+
+# tolerations:
+#   key: "db-only"
+#   operator: "Exists"
+#   effect: "NoSchedule"
+# affinity:
+#   podAntiAffinity:
+#     preferredDuringSchedulingIgnoredDuringExecution:
+#     - weight: 100
+#       podAffinityTerm:
+#         labelSelector:
+#           matchExpressions:
+#           - key: app.kubernetes.io/name
+#             operator: In
+#             values:
+#             - postgres-operator
+#         topologyKey: kubernetes.io/hostname

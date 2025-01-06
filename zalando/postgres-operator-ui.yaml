@@ -1,0 +1,19 @@
+envs:
+  targetNamespace: "postgres-operator"
+
+# tolerations:
+#   key: "db-only"
+#   operator: "Exists"
+#   effect: "NoSchedule"
+# affinity:
+#   podAntiAffinity:
+#     preferredDuringSchedulingIgnoredDuringExecution:
+#     - weight: 100
+#       podAffinityTerm:
+#         labelSelector:
+#           matchExpressions:
+#           - key: app.kubernetes.io/name
+#             operator: In
+#             values:
+#             - postgres-operator
+#         topologyKey: kubernetes.io/hostname
